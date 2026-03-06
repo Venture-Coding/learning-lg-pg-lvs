@@ -1,0 +1,7 @@
+artifact_location: file:///Users/s748779/learnings%20/li_blog/practice/mlruns/342612991969864509
+creation_time: 1772727658141
+experiment_id: '342612991969864509'
+last_update_time: 1772727658141
+lifecycle_stage: active
+name: local/langgraph-supervisor-demo
+workspace: default

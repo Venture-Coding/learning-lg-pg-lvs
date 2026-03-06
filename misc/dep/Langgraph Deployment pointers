@@ -1,0 +1,121 @@
+Langgraph Deployment pointers
+
+To deploy LangGraph agents in Azure Databricks, the recommended approach involves using the Databricks Mosaic AI Agent Framework to build and serve the agent as a REST API endpoint via Databricks Apps.
+
+***Prerequisites***
+An Azure Databricks workspace with Databricks Runtime 13.3 ML or above.
+The Databricks CLI installed and configured with a Personal Access Token (PAT) or OAuth.
+Required Python packages: databricks-langchain, langgraph, and mlflow.
+An LLM endpoint (e.g., from Azure OpenAI or Databricks Model Serving) capable of function calling.
+
+1. Deployment Steps
+
+1.1 Author your LangGraph Agent:
+1.1.1 Develop your agent logic, defining nodes (agent, tools) and the control flow graph, in a Databricks notebook or local Python files.
+1.1.2 Integrate Databricks components like Unity Catalog tools or Vector Search indexes using the databricks-langchain library to provide data access.
+
+1.2 Prepare for Deployment:
+1.2.1 Wrap your LangGraph agent code using the MLflow langchain flavor. This makes it compatible with Databricks deployment features and enables automatic tracing with MLflow.
+1.2.2 nsure all necessary API keys (e.g., OPENAI_API_KEY, DATABRICKS_TOKEN) are securely managed, preferably using Databricks secrets or the Mosaic AI Gateway.
+
+1.3 Deploy using Databricks Apps:
+1.3.1 Use a template (recommended): Start from a pre-built agent template (e.g., agent-openai-agents-sdk) from the Databricks app templates repository to get a production-ready application structure with a conversational UI and a REST API.
+1.3.2 Manual deployment: If you build from scratch, you'll need to define an application structure that exposes your agent via a REST API using a server like uvicorn. The databricks apps CLI commands are used to manage the app lifecycle:
+databricks apps create <app-name>
+databricks sync . "/Workspace/Users/$DATABRICKS_USERNAME/<app-name>" to sync local code
+databricks apps deploy <app-name> to deploy the application to a compute resource in your workspace.
+
+
+1.4 Monitor and Trace:
+1.4.1 Enable MLflow autologging (mlflow.langchain.autolog()) to automatically capture the graph's execution traces and log them to your MLflow experiment.
+1.4.2 Use the MLflow UI in Databricks to monitor agent performance, debug loops, and evaluate the agent's behavior in production.
+
+
+==============================================================
+References:
+
+Package your LangGraph/LangChain object (the compiled graph, a Runnable, an AgentExecutor, etc.) as an MLflow model so it can be versioned, traced, loaded, and ultimately served (for example by a Databricks App or Model Serving). You do this with mlflow.langchain.log_model() / save_model() (the “LangChain flavor”)
+
+Databricks’ Mosaic AI Agent Framework explicitly supports authoring with LangGraph and recommends using MLflow for tracing, packaging, and deployment—including deploying as a REST API via Databricks Apps.
+
+
+%pip install -qU mlflow "databricks-langchain" langgraph langchain-core langchain-openai
+dbutils.library.restartPython() # skip for local
+
+from databricks_langchain import ChatDatabricks # for databricks hosted model 
+llm = ChatDatabricks(endpoint="...")            # for databricks hosted model  
+
+graph = builder.compile()  # <- Runnable 
+
+
+import mlflow
+mlflow.set_experiment("/path/to/agents-demo")   # or any experiment path
+mlflow.langchain.autolog()  # turns on tracing for LangChain/LangGraph , This single line causes all invocations of your graph/chain to be traced and visible in the MLflow UI (Traces tab). [docs.langchain.com], [docs.databricks.com]
+
+#wrapping the model 1.2.1
+```python
+
+from mlflow.models.signature import ModelSignature
+from mlflow.types.schema import Schema, ColSpec
+
+# (Optional but recommended) define a signature so serving knows the shape.
+# For chat, the PyFunc wrapper accepts a list[dict] or list[BaseMessage]-like.
+input_schema  = Schema([ColSpec("string", name="messages")])  # simple form
+output_schema = Schema([ColSpec("string", name="output")])
+signature = ModelSignature(inputs=input_schema, outputs=output_schema)
+
+with mlflow.start_run() as run:
+    logged = mlflow.langchain.log_model(
+        lc_model=graph,                # <--- your Runnable (LangGraph compiled)
+        artifact_path="langgraph_agent",
+        input_example={"messages": [ {"type":"human", "content":"hi"} ]},
+        signature=signature,           # optional
+        pip_requirements=[
+            "langgraph", "langchain-core", "databricks-langchain", "mlflow"
+        ],                             # makes env portable/reproducible
+        registered_model_name="my_langgraph_agent"  # optional registry
+    )
+
+print("Model URI:", logged.model_uri)
+``` 
+
+This packages your graph and its environment as an MLflow model with the LangChain flavor, giving you a portable artifact you can load and serve. [mlflow.org]
+If you prefer to create the artifact locally first, you can use mlflow.langchain.save_model() and then mlflow.register_model() or mlflow.pyfunc.load_model().
+After saving/logging your LangGraph model, you can load and test it locally with:
+loaded = mlflow.pyfunc.load_model("path_or_uri")
+loaded.predict(...)
+
+```python
+
+mlflow.set_experiment("local-langgraph-demo")
+mlflow.langchain.autolog()
+
+with mlflow.start_run():
+    logged = mlflow.langchain.log_model(
+        graph,
+        artifact_path="react_agent",
+        input_example={
+            "messages": [
+                {"type": "human", "content": "hello"}
+            ]
+        }
+    )
+
+print("Saved to:", logged.model_uri)
+```
+
+
+
+### sanity check 
+
+loaded = mlflow.pyfunc.load_model(logged.model_uri)
+# Chat-style predict: send input in the request format supported by the wrapper.
+prediction = loaded.predict([{"messages":[{"type":"system","content":"You are helpful."},
+                                         {"type":"human","content":"Add 2 and 3."}]}])
+print(prediction)
+
+Databricks App templates (and the recommended AgentServer) are built to host MLflow-wrapped agents, giving you a REST /invocations endpoint with tracing baked in. Starting from a template like agent-openai-agents-sdk sets up a production-ready FastAPI server that calls your MLflow-wrapped agent under the hood. [learn.microsoft.com]
+If you prefer to build the app yourself, you can still load the MLflow model in your FastAPI POST /invocations handler and forward requests to predict()—the result is the same pattern, just handcrafted. (The template saves you time and plugs neatly into Apps lifecycle commands.)
+
+for hands on : CodeAlongNotebok subsection ChatVertexAI , sub subsection Local Mlflow logging
+

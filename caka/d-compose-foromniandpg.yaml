@@ -1,0 +1,49 @@
+services:
+  db:
+    image: google/alloydbomni:15.7.1
+    privileged: true
+    restart: "always" # always
+    shm_size: 256mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -p 5532"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PORT=5532
+      - POSTGRES_PASSWORD=test321
+      - POSTGRES_DB=casi_knowledge
+      - DATABASE_HOST=localhost
+      - PGDATA=/var/lib/postgresql/data
+    ports:
+      - "5532:5532"
+    volumes:
+      - ./knowledgeburst/data/01_raw/alloydb:/var/lib/postgresql/data
+      - ./knowledgeburst/conf/custom-postgresql.conf:/var/lib/postgresql/postgresql.conf
+    command: postgres -c config_file=/var/lib/postgresql/postgresql.conf
+    networks:
+      - app_network # Ensure DB is also on the same network
+
+  db_itest:
+    image: pgvector/pgvector:pg16
+    restart: "always" # always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -p 5532"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=test321
+      - POSTGRES_DB=casi_knowledge
+      - DATABASE_HOST=localhost
+      - PGDATA=/var/lib/postgresql/data
+    ports:
+      - "5533:5532"
+    volumes:
+      - ./knowledgeburst/data/01_raw/postgres_itest:/var/lib/postgresql/data
+      - ./knowledgeburst/conf/custom-postgresql.conf:/var/lib/postgresql/postgresql.conf
+    command: postgres -c config_file=/var/lib/postgresql/postgresql.conf
+    networks:
+      - app_network # Ensure DB is also on the same network

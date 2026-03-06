@@ -1,0 +1,26 @@
+artifact_path: /Users/s748779/learnings /li_blog/practice/mlruns/1/models/m-6a214a7b9d6c401da0a174b44ead514e/artifacts
+flavors:
+  langchain:
+    code: null
+    langchain_version: 1.2.10
+    streamable: true
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.langchain
+    model_code_path: /Users/s748779/learnings /li_blog/practice/supervisor_model.py
+    predict_stream_fn: predict_stream
+    python_version: 3.13.12
+    streamable: true
+mlflow_version: 3.10.0
+model_id: m-6a214a7b9d6c401da0a174b44ead514e
+model_size_bytes: 5237
+model_uuid: m-6a214a7b9d6c401da0a174b44ead514e
+prompts: null
+run_id: 1d927c3a95824443a5b0ba46a194c81b
+saved_input_example_info:
+  artifact_path: input_example.json
+  serving_input_path: serving_input_example.json
+  type: json_object
+utc_time_created: '2026-03-06 00:04:38.536091'

@@ -1,0 +1,11 @@
+channels:
+- conda-forge
+dependencies:
+- python=3.13.12
+- pip<=26.0
+- pip:
+  - mlflow
+  - langgraph
+  - langchain-core
+  - langchain-google-vertexai
+name: mlflow-env
