@@ -1,0 +1,39 @@
+flowchart TD
+    Q["User Query / Code Change"] --> GW
+
+    subgraph GW["Gateway LM (cheap, fast — gemini-flash)"]
+        R["Classify intent + extract scope\nwith_structured_output + Pydantic\n→ {task_type, file_scope, sub_query}"]
+    end
+
+    GW -->|task_type=explain_code| SA1
+    GW -->|task_type=find_bug| SA2
+    GW -->|task_type=write_test| SA3
+    GW -->|task_type=summarise_module| SA4
+    GW -->|task_type=cross_file_reason| SA5
+
+    subgraph SA1["Sub-Agent: Code Explainer"]
+        direction TB
+        L1["Load ONLY files in file_scope\n(2-5 files max)"] --> G1["DSPy ChainOfThought\n(optimised for explanation)"]
+    end
+
+    subgraph SA2["Sub-Agent: Bug Finder"]
+        direction TB
+        L2["Load file + its direct imports\n+ git diff"] --> G2["DSPy Assert\n(must cite line numbers)"]
+    end
+
+    subgraph SA3["Sub-Agent: Test Writer"]
+        direction TB
+        L3["Load function + type stubs\n+ existing test patterns"] --> G3["DSPy Predict\n(optimised for test templates)"]
+    end
+
+    subgraph SA4["Sub-Agent: Module Summariser"]
+        direction TB
+        L4["Chunk module into segments\nCompress each with DSPy"] --> G4["Progressive summary\n(ContextWindowManager)"]
+    end
+
+    subgraph SA5["Sub-Agent: Cross-File Reasoner"]
+        direction TB
+        L5["Hybrid RAG over repo index\n(Dense + BM25 → RRF)"] --> G5["DSPy RAG module\n(grounded answer + citations)"]
+    end
+
+    SA1 & SA2 & SA3 & SA4 & SA5 --> OUT["Final response\n(never exceeded ~8k tokens per sub-agent)"]

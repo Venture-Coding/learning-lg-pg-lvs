@@ -1,0 +1,22 @@
+flowchart TD
+    subgraph LANGGRAPH["LangGraph — State Machine + Checkpoint Memory"]
+        S1["START"] --> N1
+        N1["Node: gateway\nLangChain with_structured_output\nroutes query → task_type"] --> N2
+        N2{"task_type?"} 
+        N2 -->|explain / summarise\ncross_file_reason| N3
+        N2 -->|write_code\nfix_bug\nrun_analysis| N4
+        N2 -->|multi_agent_debate\narchitecture_review| N5
+        N3["Node: rag_answer\nLangChain LCEL chain\nHybrid RAG + structured output"] --> N6
+        N4["Node: autogen_code_executor\n⭐ AutoGen killer feature\nAssistantAgent writes code\nUserProxyAgent executes it\nLoop until tests pass"] --> N6
+        N5["Node: autogen_debate\n⭐ AutoGen killer feature\nMultiple AssistantAgents\ndebate + critique each other\nuntil consensus"] --> N6
+        N6["Node: synthesise\nMerge result into state"] --> END
+    end
+
+    subgraph AUTOGEN_DETAIL["AutoGen sub-system (inside nodes 4 and 5)"]
+        direction LR
+        AA["AssistantAgent\n(Gemini via LiteLLM)"] <-->|conversation loop| UA["UserProxyAgent\n(actually runs Python\nin subprocess sandbox)"]
+        AA2["Architect Agent"] <-->|critique loop| AA3["Reviewer Agent"]
+    end
+
+    N4 -.->|invokes| AA
+    N5 -.->|invokes| AA2

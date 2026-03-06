@@ -1,0 +1,13 @@
+Part 1: How DSPy optimization actually works
+Yes — it makes many LLM calls, but only once at compile time.
+
+After compiled.save("my_module.json") → runtime = zero extra calls. The few-shot demos are just static text baked into the prompt at load time.
+
+BootstrapFewShot with 20 examples, 3-module pipeline:
+  ≈ 20 examples × 3 modules = 60 forward passes
+  + failed examples get retried  → ~100-150 total LLM calls
+
+MIPROv2 with num_candidates=10:
+  ≈ 10 instruction variants × validation set size × pipeline depth
+  → easily 500-2000 LLM calls
+  → use only when quality improvement justifies the cost

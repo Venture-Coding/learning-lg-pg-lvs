@@ -1,0 +1,29 @@
+# Core LLM frameworks
+dspy-ai>=2.5.0
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-community>=0.3.0
+langgraph>=0.2.0
+
+# Google / Vertex AI integrations
+langchain-google-vertexai>=2.0.0
+# langchain-google-genai>=2.0.0   # uncomment for Gemini Developer API instead of Vertex
+
+# Vector store
+langchain-chroma>=0.1.0
+chromadb>=0.5.0
+
+# Sparse retrieval
+rank_bm25>=0.2.2
+
+# Utilities
+typing_extensions>=4.9.0
+python-dotenv>=1.0.0
+
+# Optional: real web search tool
+# tavily-python>=0.3.0
+# langchain-tavily>=0.1.0
+
+# Optional: evaluation / observability
+# ragas>=0.2.0
+# langfuse>=2.0.0

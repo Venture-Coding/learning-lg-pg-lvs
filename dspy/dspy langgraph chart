@@ -1,0 +1,57 @@
+flowchart TD
+    subgraph LLM_LAYER["LLM Layer (LangChain / Vertex AI)"]
+        VTX["ChatVertexAI / ChatGoogleGenerativeAI\n(gemini-2.0-flash)"]
+    end
+
+    subgraph DSPY_LAYER["DSPy Layer – Prompt Optimization & Typed Modules"]
+        DSIG1["Signature: QueryAnalysis\n(query → search_queries, needs_tools)"]
+        DSIG2["Signature: HybridRAGGenerate\n(query, context → answer, citations)"]
+        DSIG3["Signature: ToolCallDecision\n(query, partial_answer → tool_name, tool_args)"]
+        COT1["ChainOfThought(QueryAnalysis)"]
+        COT2["ChainOfThought(HybridRAGGenerate)"]
+        COT3["ChainOfThought(ToolCallDecision)"]
+        DSIG1 --> COT1
+        DSIG2 --> COT2
+        DSIG3 --> COT3
+    end
+
+    subgraph RETRIEVAL["Hybrid Retrieval"]
+        DENSE["Dense Retrieval\n(Chroma + VertexAI Embeddings)"]
+        SPARSE["Sparse Retrieval\n(BM25Retriever)"]
+        RRF["Reciprocal Rank Fusion\n(RRF merge + rerank)"]
+        DENSE --> RRF
+        SPARSE --> RRF
+    end
+
+    subgraph TOOLS["LangChain Tools"]
+        T1["web_search (Tavily/SerpAPI)"]
+        T2["calculator"]
+        T3["custom_api_tool"]
+    end
+
+    subgraph LANGGRAPH["LangGraph Agent (State Machine)"]
+        S1["START"]
+        N1["Node: query_analysis\n(uses DSPy COT1)"]
+        N2["Node: hybrid_retrieval\n(Dense + Sparse + RRF)"]
+        N3["Node: generate_answer\n(uses DSPy COT2)"]
+        N4{"Router:\nneeds_tools?"}
+        N5["Node: tool_execution\n(uses DSPy COT3 + LangChain Tools)"]
+        N6["Node: re_generate\n(answer with tool results)"]
+        END["END"]
+
+        S1 --> N1
+        N1 --> N2
+        N2 --> N3
+        N3 --> N4
+        N4 -- "Yes" --> N5
+        N4 -- "No" --> END
+        N5 --> N6
+        N6 --> END
+    end
+
+    VTX -- "dspy.LM('vertex_ai/...')\nor LangChain wrapper" --> DSPY_LAYER
+    VTX --> TOOLS
+    COT1 --> N1
+    COT2 --> N3
+    COT3 --> N5
+    RRF --> N2
