@@ -1,0 +1,54 @@
+flowchart TD
+    UI["Streamlit UI\n(4 pages)"]
+    P1["Page 1 – Input Form\np_name, p_statement,\nout_c, RAID"]
+    P2["Page 2 – Trigger Report"]
+    P3["Page 3 – Display Output"]
+    P4["Page 4 – PPT Export"]
+
+    API["FastAPI Backend\nmain.py"]
+    SAVE["/save-inputs/\n→ inputs.json"]
+    GEN["/generate-report/"]
+    GET["/get-report/"]
+    PPT["/create-ppt/ & /download-ppt/"]
+
+    SVC["services.py\ngenerate_report()"]
+    EXAMPLES["examples CSV\nfew-shot samples\n(3 random rows)"]
+    QUERY["Build GPT Query\nfrom inputs"]
+    CLASS["get_classify_json_prompt()\n(prompt_texts_cc.py)"]
+    GPT["Azure OpenAI GPT-4\nAzureChatOpenAI\n(cc_utils.py)"]
+    OUT["output.json\n{ project_name,\n  predicted_cost_class,\n  cost_reasoning }"]
+
+    subgraph REALL["REALL Pipeline – get_reall_from_input_gpt() [cc_utils.py]"]
+        R1["Step 1 – Extract Roles\n(user & system)"]
+        R2["Step 2 – Extract Events\n(manual & automated)"]
+        R3["Step 3 – Extract Activities\n& Data objects"]
+        R4["Step 4 – Map L1 Capabilities\n(6 domains, ~18 caps)\nfrom embedded L1 model"]
+        R5["Step 5 – Filter & Map L2 Capabilities\n(sub-caps per impacted L1)\nfrom embedded L2 model"]
+        R1 --> R2 --> R3 --> R4 --> R5
+    end
+
+    subgraph FINAL["Final ADR Matching – get_final_gpt_output() [cc_utils.py]"]
+        V1["Vector-matched ADRs\n(top-N from VDB)\nwith problem/context/solution"]
+        F1["get_final_gpt_output()\np3 prompt + L1 + L2 + matched ADRs"]
+        F2["GPT Decision\nReusable ADRs   vs   New ADRs needed"]
+        V1 --> F1 --> F2
+    end
+
+    UI --> P1 --> API
+    UI --> P2 --> API
+    UI --> P3 --> API
+    UI --> P4 --> API
+
+    API --> SAVE
+    API --> GEN --> SVC
+    API --> GET
+    API --> PPT
+
+    SVC --> EXAMPLES
+    SVC --> QUERY
+    QUERY --> CLASS
+    CLASS --> GPT
+    GPT --> OUT
+
+    QUERY --> REALL
+    R5 --> FINAL
